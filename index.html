@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>經濟系營隊活動報名表</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <style>
+    body {
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      background: radial-gradient(circle at 10% 20%, #f0f4f8 0%, #e2e8f0 90%);
+    }
+    .custom-shadow {
+      box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.08), 0 0 1px 1px rgba(15, 23, 42, 0.05);
+    }
+    .group-card-selected {
+      border-color: #2563eb !important;
+      background-color: #eff6ff !important;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+    }
+  </style>
+</head>
+<body class="min-h-screen text-slate-800 antialiased flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-8">
+
+  <header class="max-w-3xl mx-auto w-full mb-6">
+    <div class="flex items-center justify-between pb-4 border-b border-slate-200/80">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-900 text-amber-400 flex items-center justify-center font-bold text-xl shadow-md">
+          <i data-lucide="trending-up" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <span class="text-xs uppercase tracking-widest text-slate-500 font-semibold">ECONOMICS CAMP</span>
+          <h2 class="text-base font-bold text-slate-800">經濟學系研習迎新營隊</h2>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="toggleConfigBtn" class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 px-3 py-1.5 rounded-lg transition-colors shadow-sm" title="設定 Google 試算表 API 網址">
+          <i data-lucide="sheet" class="w-3.5 h-3.5 text-emerald-600"></i>
+          <span>試算表設定</span>
+        </button>
+        <button id="viewListBtn" class="inline-flex items-center gap-1.5 text-xs font-medium text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200/60 px-3 py-1.5 rounded-lg transition-colors">
+          <i data-lucide="users" class="w-3.5 h-3.5"></i>
+          <span>已報名名冊 (<span id="attendeeCount">3</span>)</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto w-full flex-grow">
+    <!-- Google 試算表 Web App URL 設定列 (可折疊) -->
+    <section id="configPanel" class="bg-white rounded-2xl p-4 sm:p-5 mb-6 border border-emerald-200 shadow-sm hidden transition-all">
+      <div class="flex items-start justify-between gap-3 mb-2">
+        <div class="flex items-center gap-2 text-emerald-800 font-semibold text-sm">
+          <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i>
+          <span>Google 試算表串接設定</span>
+        </div>
+        <a 
+          href="https://docs.google.com/spreadsheets/d/1Ew9-mGU-hDSU0d9KesUck5gPwuqCWyINRRjr8A6L6XM/edit" 
+          target="_blank" 
+          class="text-[11px] bg-emerald-50 text-emerald-700 font-medium px-2.5 py-1 rounded-lg border border-emerald-200 hover:bg-emerald-100 transition inline-flex items-center gap-1"
+        >
+          <span>開啟您的 Google 試算表</span>
+          <i data-lucide="external-link" class="w-3 h-3"></i>
+        </a>
+      </div>
+      <p class="text-xs text-slate-500 mb-3 leading-relaxed">
+        已綁定您的試算表 (ID: <code class="bg-slate-100 px-1 py-0.5 rounded text-slate-700">1Ew9-mGU...</code>)。請在該試算表的「擴充功能 &gt; Apps Script」貼上右側 Code.gs，部署為 Web App 後，將產生的網址貼入下方：
+      </p>
+      <div class="flex flex-col sm:flex-row gap-2">
+        <input 
+          type="url" 
+          id="googleScriptUrl" 
+          placeholder="https://script.google.com/macros/s/.../exec"
+          class="flex-1 px-3.5 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-slate-700"
+        >
+        <button id="saveConfigBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-4 py-2 rounded-xl flex items-center justify-center gap-1.5 transition">
+          <i data-lucide="save" class="w-3.5 h-3.5"></i>
+          儲存網址
+        </button>
+      </div>
+      <div class="mt-2.5 text-[11px] text-slate-400 flex items-center gap-1.5">
+        <i data-lucide="info" class="w-3.5 h-3.5 text-blue-500"></i>
+        <span>欄位配置：報名時間 | 學號 | 姓名 | 分組代號 | 分組名稱 | 電子信箱</span>
+      </div>
+    </section>
+
+    <!-- 活動資訊宣傳面板 -->
+    <section class="bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 text-white rounded-2xl p-6 sm:p-8 mb-6 shadow-xl relative overflow-hidden">
+      <div class="absolute -right-12 -bottom-12 w-52 h-52 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
+      <div class="relative z-10">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-medium mb-3 backdrop-blur-sm border border-blue-400/20">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          2026 年度學期盛會・開放報名中
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-white mb-3">
+          經世濟民・探索未來｜經濟系營隊活動
+        </h1>
+        <p class="text-slate-300 text-sm sm:text-base leading-relaxed mb-6">
+          歡迎經濟系新生與學員！透過賽局理論、計量數據分析與市場策略的深度體驗，一起打開經濟學思維的全新視野。
+        </p>
+
+        <!-- 活動核心資訊卡 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          <div class="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-3 rounded-xl border border-white/10">
+            <div class="p-2 rounded-lg bg-amber-400/20 text-amber-300">
+              <i data-lucide="calendar" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <div class="text-xs text-slate-300">活動日期</div>
+              <div class="font-semibold text-white">10 月 7 日 (週三)</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-3 rounded-xl border border-white/10">
+            <div class="p-2 rounded-lg bg-emerald-400/20 text-emerald-300">
+              <i data-lucide="clock" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <div class="text-xs text-slate-300">活動時間</div>
+              <div class="font-semibold text-white">晚上 19:00 - 21:00 (18:40入場)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="bg-white rounded-2xl p-6 sm:p-8 custom-shadow border border-slate-100 mb-8">
+      <div class="border-b border-slate-100 pb-4 mb-6">
+        <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+          <i data-lucide="file-edit" class="w-5 h-5 text-blue-600"></i>
+          學員報名資料登記
+        </h2>
+        <p class="text-xs text-slate-500 mt-1">請確實填寫個人資料，系統將依據所選分組進行行前通知與專案分配。</p>
+      </div>
+
+      <form id="campForm" class="space-y-6" novalidate>
+        <!-- 學號與姓名 (雙欄) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div>
+            <label for="studentId" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+              學號 <span class="text-rose-500">*</span>
+            </label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <i data-lucide="badge" class="w-4 h-4"></i>
+              </span>
+              <input 
+                type="text" 
+                id="studentId" 
+                name="studentId" 
+                required 
+                placeholder="例如：B11703045"
+                class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              >
+            </div>
+            <p id="studentIdErr" class="text-xs text-rose-500 mt-1 hidden">請輸入有效學號</p>
+          </div>
+
+          <div>
+            <label for="fullName" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+              姓名 <span class="text-rose-500">*</span>
+            </label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <i data-lucide="user" class="w-4 h-4"></i>
+              </span>
+              <input 
+                type="text" 
+                id="fullName" 
+                name="fullName" 
+                required 
+                placeholder="例如：陳大為"
+                class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              >
+            </div>
+            <p id="fullNameErr" class="text-xs text-rose-500 mt-1 hidden">請輸入姓名</p>
+          </div>
+        </div>
+
+        <!-- 電子信箱 -->
+        <div>
+          <label for="email" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+            電子郵件信箱 (Email) <span class="text-rose-500">*</span>
+          </label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <i data-lucide="mail" class="w-4 h-4"></i>
+            </span>
+            <input 
+              type="email" 
+              id="email" 
+              name="email" 
+              required 
+              placeholder="econ.student@university.edu.tw"
+              class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            >
+          </div>
+          <p id="emailErr" class="text-xs text-rose-500 mt-1 hidden">請輸入正確的電子郵件格式</p>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+              志願分組選擇 <span class="text-rose-500">*</span>
+            </label>
+            <span class="text-xs text-slate-400">請選取 1 個參與小組</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <!-- Group A -->
+            <label class="group-option cursor-pointer block border border-slate-200 hover:border-blue-400 rounded-xl p-4 transition-all duration-150 relative bg-white">
+              <input type="radio" name="campGroup" value="A" class="sr-only" checked>
+              <div class="flex items-start justify-between">
+                <span class="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-sm mb-2">A</span>
+                <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium group-status">名額充裕</span>
+              </div>
+              <h4 class="text-sm font-bold text-slate-800">總體經濟策略組</h4>
+              <p class="text-xs text-slate-500 mt-1 leading-relaxed">貨幣政策、利率模擬與國際經貿趨勢討論研析。</p>
+            </label>
+
+            <!-- Group B -->
+            <label class="group-option cursor-pointer block border border-slate-200 hover:border-blue-400 rounded-xl p-4 transition-all duration-150 relative bg-white">
+              <input type="radio" name="campGroup" value="B" class="sr-only">
+              <div class="flex items-start justify-between">
+                <span class="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-sm mb-2">B</span>
+                <span class="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-medium group-status">熱門名額</span>
+              </div>
+              <h4 class="text-sm font-bold text-slate-800">計量金融數據組</h4>
+              <p class="text-xs text-slate-500 mt-1 leading-relaxed">Python/R 經濟數據預測實作與資本市場模組。</p>
+            </label>
+
+            <!-- Group C -->
+            <label class="group-option cursor-pointer block border border-slate-200 hover:border-blue-400 rounded-xl p-4 transition-all duration-150 relative bg-white">
+              <input type="radio" name="campGroup" value="C" class="sr-only">
+              <div class="flex items-start justify-between">
+                <span class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 font-bold flex items-center justify-center text-sm mb-2">C</span>
+                <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium group-status">名額充裕</span>
+              </div>
+              <h4 class="text-sm font-bold text-slate-800">產業賽局行為組</h4>
+              <p class="text-xs text-slate-500 mt-1 leading-relaxed">寡占市場定價實驗與行為經濟學互動沙盤推演。</p>
+            </label>
+          </div>
+          <p id="campGroupErr" class="text-xs text-rose-500 mt-1 hidden">請選擇一個分組</p>
+        </div>
+
+        <div class="pt-2">
+          <button 
+            type="submit" 
+            id="submitBtn"
+            class="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium py-3 px-6 rounded-xl shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition duration-200"
+          >
+            <i data-lucide="check-circle-2" class="w-5 h-5" id="btnIcon"></i>
+            <span id="btnText">確認送出活動報名</span>
+          </button>
+          
+          <div class="flex items-center justify-center gap-1.5 text-xs text-slate-400 mt-3 text-center">
+            <i data-lucide="shield-check" class="w-3.5 h-3.5 text-slate-400"></i>
+            <span>提交即代表同意營隊隱私條款，資料將即時登記於 Google 試算表與活動名冊。</span>
+          </div>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <!-- 報名成功彈窗 (Modal) -->
+  <div id="successModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden transition-opacity duration-300">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 text-center shadow-2xl transform scale-95 transition-transform duration-300" id="modalContent">
+      <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i data-lucide="party-popper" class="w-8 h-8"></i>
+      </div>
+      <h3 class="text-xl font-bold text-slate-900 mb-1">報名登記成功！</h3>
+      <p class="text-xs text-slate-500 mb-2">營隊行前通知信已寄發，請保留以下報名憑證資訊。</p>
+      
+      <div id="sheetsSyncBadge" class="hidden mb-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-medium border border-emerald-200">
+        <i data-lucide="cloud-check" class="w-3.5 h-3.5"></i>
+        <span>已同步儲存至 Google 試算表</span>
+      </div>
+
+      <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-left text-xs space-y-2 mb-5">
+        <div class="flex justify-between border-b border-slate-200/60 pb-2">
+          <span class="text-slate-500">活動名稱</span>
+          <span class="font-semibold text-slate-800">經濟系營隊活動</span>
+        </div>
+        <div class="flex justify-between border-b border-slate-200/60 pb-2">
+          <span class="text-slate-500">活動時間</span>
+          <span class="font-semibold text-slate-800">10/7 (三) 19:00 - 21:00</span>
+        </div>
+        <div class="flex justify-between border-b border-slate-200/60 pb-2">
+          <span class="text-slate-500">學號 / 姓名</span>
+          <span class="font-semibold text-slate-800" id="modalUserSummary">-</span>
+        </div>
+        <div class="flex justify-between border-b border-slate-200/60 pb-2">
+          <span class="text-slate-500">選定分組</span>
+          <span class="font-bold text-blue-600" id="modalGroupSummary">-</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">電子信箱</span>
+          <span class="font-medium text-slate-700" id="modalEmailSummary">-</span>
+        </div>
+      </div>
+
+      <div class="flex gap-2">
+        <button id="copySummaryBtn" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold py-2.5 px-3 rounded-lg flex items-center justify-center gap-1.5 transition">
+          <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+          <span>複製資料</span>
+        </button>
+        <button id="closeModalBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2.5 px-3 rounded-lg transition">
+          好的，關閉
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 名冊側邊滑出抽屜 (Attendee Drawer) -->
+  <div id="drawerOverlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden transition-opacity">
+    <div class="absolute right-0 top-0 bottom-0 max-w-sm w-full bg-white shadow-2xl p-6 overflow-y-auto flex flex-col justify-between">
+      <div>
+        <div class="flex items-center justify-between pb-4 border-b border-slate-200 mb-4">
+          <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+            <i data-lucide="list-checks" class="w-5 h-5 text-blue-600"></i>
+            目前報名名單一覽
+          </h3>
+          <button id="closeDrawerBtn" class="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+        <div id="attendeesList" class="space-y-2.5">
+          <!-- 動態載入名冊列表 -->
+        </div>
+      </div>
+      <div class="pt-4 border-t border-slate-100 text-xs text-slate-400 text-center">
+        資料僅存於本機前端示範環境
+      </div>
+    </div>
+  </div>
+
+  <!-- 浮動提示 Toast -->
+  <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white text-xs px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 pointer-events-none opacity-0 transition-opacity duration-300 z-50">
+    <i data-lucide="check" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toastMsg">已完成</span>
+  </div>
+
+  <footer class="max-w-3xl mx-auto w-full text-center text-xs text-slate-400 py-4 mt-6">
+    © 2026 國立大學經濟學系學會．活動籌備小組 | 如有疑問請洽活動負責信箱
+  </footer>
+
+  <script>
+    // 初始化 Lucide 圖標
+    lucide.createIcons();
+
+    // 試算表 Web App URL 設定儲存變數 (內建記憶)
+    let googleSheetAppUrl = '';
+
+    // 模擬已報名數據庫
+    let registeredList = [
+      { studentId: 'B11703001', name: '林子翔', group: 'A', groupName: '總體經濟策略組', email: 'b11703001@univ.edu.tw' },
+      { studentId: 'B11703015', name: '王詩涵', group: 'B', groupName: '計量金融數據組', email: 'b11703015@univ.edu.tw' },
+      { studentId: 'B11703028', name: '張家豪', group: 'C', groupName: '產業賽局行為組', email: 'b11703028@univ.edu.tw' }
+    ];
+
+    const groupTitles = {
+      'A': 'A組 - 總體經濟策略組',
+      'B': 'B組 - 計量金融數據組',
+      'C': 'C組 - 產業賽局行為組'
+    };
+
+    // DOM 節點
+    const form = document.getElementById('campForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const btnText = document.getElementById('btnText');
+    const studentIdInput = document.getElementById('studentId');
+    const fullNameInput = document.getElementById('fullName');
+    const emailInput = document.getElementById('email');
+    const groupInputs = document.querySelectorAll('input[name="campGroup"]');
+    const groupOptionCards = document.querySelectorAll('.group-option');
+
+    const toggleConfigBtn = document.getElementById('toggleConfigBtn');
+    const configPanel = document.getElementById('configPanel');
+    const googleScriptUrlInput = document.getElementById('googleScriptUrl');
+    const saveConfigBtn = document.getElementById('saveConfigBtn');
+    const sheetsSyncBadge = document.getElementById('sheetsSyncBadge');
+
+    const successModal = document.getElementById('successModal');
+    const modalContent = document.getElementById('modalContent');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const copySummaryBtn = document.getElementById('copySummaryBtn');
+
+    const drawerOverlay = document.getElementById('drawerOverlay');
+    const viewListBtn = document.getElementById('viewListBtn');
+    const closeDrawerBtn = document.getElementById('closeDrawerBtn');
+    const attendeesListContainer = document.getElementById('attendeesList');
+    const attendeeCountSpan = document.getElementById('attendeeCount');
+
+    let lastSubmissionData = null;
+
+    // 折疊/展開試算表設定面板
+    toggleConfigBtn.addEventListener('click', () => {
+      configPanel.classList.toggle('hidden');
+    });
+
+    // 儲存 Google Web App URL
+    saveConfigBtn.addEventListener('click', () => {
+      const url = googleScriptUrlInput.value.trim();
+      if (url && !url.startsWith('https://script.google.com/')) {
+        showToast('請輸入正確的 Google Apps Script 部署網址');
+        return;
+      }
+      googleSheetAppUrl = url;
+      showToast(url ? '已成功儲存試算表串接網址！' : '已清除試算表串接網址');
+      if (url) configPanel.classList.add('hidden');
+    });
+
+    // 更新選取卡片外觀
+    function updateGroupCardStyles() {
+      groupOptionCards.forEach(card => {
+        const radio = card.querySelector('input[type="radio"]');
+        if (radio.checked) {
+          card.classList.add('group-card-selected');
+        } else {
+          card.classList.remove('group-card-selected');
+        }
+      });
+    }
+
+    // 初始化選取狀態
+    updateGroupCardStyles();
+
+    // 監聽群組切換
+    groupInputs.forEach(input => {
+      input.addEventListener('change', updateGroupCardStyles);
+    });
+
+    // 顯示 Toast 訊息
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      toastMsg.textContent = message;
+      toast.classList.remove('opacity-0');
+      toast.classList.add('opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0');
+      }, 2500);
+    }
+
+    // 欄位驗證
+    function validateForm() {
+      let isValid = true;
+
+      // 學號驗證 (不能為空)
+      const sidVal = studentIdInput.value.trim();
+      const sidErr = document.getElementById('studentIdErr');
+      if (!sidVal) {
+        sidErr.classList.remove('hidden');
+        studentIdInput.classList.add('border-rose-400');
+        isValid = false;
+      } else {
+        sidErr.classList.add('hidden');
+        studentIdInput.classList.remove('border-rose-400');
+      }
+
+      // 姓名驗證 (不能為空)
+      const nameVal = fullNameInput.value.trim();
+      const nameErr = document.getElementById('fullNameErr');
+      if (!nameVal) {
+        nameErr.classList.remove('hidden');
+        fullNameInput.classList.add('border-rose-400');
+        isValid = false;
+      } else {
+        nameErr.classList.add('hidden');
+        fullNameInput.classList.remove('border-rose-400');
+      }
+
+      // 信箱驗證
+      const emailVal = emailInput.value.trim();
+      const emailErr = document.getElementById('emailErr');
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailVal || !emailRegex.test(emailVal)) {
+        emailErr.classList.remove('hidden');
+        emailInput.classList.add('border-rose-400');
+        isValid = false;
+      } else {
+        emailErr.classList.add('hidden');
+        emailInput.classList.remove('border-rose-400');
+      }
+
+      return isValid;
+    }
+
+    // 更新名冊視圖
+    function renderAttendeeList() {
+      attendeeCountSpan.textContent = registeredList.length;
+      attendeesListContainer.innerHTML = '';
+      
+      registeredList.slice().reverse().forEach((item) => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'p-3 rounded-xl border border-slate-100 bg-slate-50 flex items-center justify-between text-xs';
+        itemEl.innerHTML = `
+          <div>
+            <div class="font-bold text-slate-800 flex items-center gap-1.5">
+              <span>${item.name}</span>
+              <span class="text-[11px] font-mono text-slate-400 font-normal">(${item.studentId})</span>
+            </div>
+            <div class="text-[11px] text-slate-500 truncate max-w-[170px] mt-0.5">${item.email}</div>
+          </div>
+          <span class="px-2 py-1 rounded bg-blue-100/70 text-blue-700 font-bold text-[11px]">
+            ${item.group} 組
+          </span>
+        `;
+        attendeesListContainer.appendChild(itemEl);
+      });
+    }
+
+    // 表單提交處理 (支援同步至 Google 試算表)
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      
+      if (!validateForm()) {
+        showToast('請修正表單中填寫不完整的項目');
+        return;
+      }
+
+      const selectedGroup = document.querySelector('input[name="campGroup"]:checked').value;
+      const formData = {
+        studentId: studentIdInput.value.trim(),
+        name: fullNameInput.value.trim(),
+        group: selectedGroup,
+        groupName: groupTitles[selectedGroup],
+        email: emailInput.value.trim()
+      };
+
+      // 鎖定按鈕避免重複點擊
+      submitBtn.disabled = true;
+      btnText.textContent = '資料傳送登記中...';
+
+      let syncedToGoogle = false;
+
+      // 如果有填寫 Google 試算表 Web App 網址，進行非同步上傳
+      if (googleSheetAppUrl) {
+        try {
+          // 使用 no-cors 或標準 POST 送出
+          await fetch(googleSheetAppUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+          });
+          syncedToGoogle = true;
+        } catch (err) {
+          console.warn('Google 試算表同步警告:', err);
+        }
+      }
+
+      submitBtn.disabled = false;
+      btnText.textContent = '確認送出活動報名';
+
+      lastSubmissionData = formData;
+      registeredList.push(formData);
+      renderAttendeeList();
+
+      // 填入成功彈窗資料
+      document.getElementById('modalUserSummary').textContent = `${formData.name} (${formData.studentId})`;
+      document.getElementById('modalGroupSummary').textContent = formData.groupName;
+      document.getElementById('modalEmailSummary').textContent = formData.email;
+
+      // 若有成功同步試算表則顯示綠色徽章
+      if (syncedToGoogle) {
+        sheetsSyncBadge.classList.remove('hidden');
+      } else {
+        sheetsSyncBadge.classList.add('hidden');
+      }
+
+      // 打開成功彈窗
+      successModal.classList.remove('hidden');
+      setTimeout(() => {
+        modalContent.classList.remove('scale-95');
+        modalContent.classList.add('scale-100');
+      }, 10);
+
+      // 重設表單輸入
+      form.reset();
+      updateGroupCardStyles();
+      showToast(syncedToGoogle ? '報名成功！資料已同步存入 Google 試算表' : '報名已成功送出！');
+    });
+
+    // 關閉成功彈窗
+    closeModalBtn.addEventListener('click', () => {
+      modalContent.classList.remove('scale-100');
+      modalContent.classList.add('scale-95');
+      setTimeout(() => {
+        successModal.classList.add('hidden');
+      }, 150);
+    });
+
+    // 複製報名資料憑證
+    copySummaryBtn.addEventListener('click', () => {
+      if (!lastSubmissionData) return;
+      const textToCopy = `【經濟系營隊活動報名憑證】\n活動日期：10/7 (三) 19:00 - 21:00\n學號：${lastSubmissionData.studentId}\n姓名：${lastSubmissionData.name}\n選定組別：${lastSubmissionData.groupName}\n信箱：${lastSubmissionData.email}`;
+      
+      const tempTextarea = document.createElement('textarea');
+      tempTextarea.value = textToCopy;
+      document.body.appendChild(tempTextarea);
+      tempTextarea.select();
+      try {
+        document.execCommand('copy');
+        showToast('已複製報名資訊至剪貼簿！');
+      } catch (err) {
+        showToast('複製失敗，請手動截圖保留');
+      }
+      document.body.removeChild(tempTextarea);
+    });
+
+    // 打開與關閉名冊抽屜
+    viewListBtn.addEventListener('click', () => {
+      renderAttendeeList();
+      drawerOverlay.classList.remove('hidden');
+    });
+
+    closeDrawerBtn.addEventListener('click', () => {
+      drawerOverlay.classList.add('hidden');
+    });
+
+    drawerOverlay.addEventListener('click', (e) => {
+      if (e.target === drawerOverlay) {
+        drawerOverlay.classList.add('hidden');
+      }
+    });
+
+    // 初次載入渲染
+    renderAttendeeList();
+  </script>
+</body>
+</html>
